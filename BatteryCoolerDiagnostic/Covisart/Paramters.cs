@@ -8,6 +8,10 @@ namespace BatteryCoolerDiagnostic.Covisart
         public object Message { get; set; }
         public string Unit { get; set; }
         public int Length { get; set; }
+        public override string ToString()
+        {
+            return $"Name: {Name} Message: {Message} Unit:{Unit}";
+        }
     };
     public class CANDATA
     {

@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
+using System.Drawing;
 using System.Threading;
 using System.Windows.Forms;
 using BatteryCoolerDiagnostic.Covisart;
-using Newtonsoft.Json;
+using BatteryCoolerDiagnostic.Properties;
 using Peak.Can.Light;
 using SiE.SiEAPI_Interface;
 using SiE.SiEAPI_Interface.SiEAPI_InterfaceTypes;
@@ -15,11 +15,6 @@ namespace BatteryCoolerDiagnostic
 {
     public partial class Form1 : Form
     {
-        public string ExeRootPath = Application.StartupPath + "\\";
-        private readonly string _configPath = Application.StartupPath + "\\config\\";
-        public string MessageLogsPath = Application.StartupPath + "\\message_logs\\";
-        public string MessageLogsExcelPath = Application.StartupPath + "\\message_logs\\excel\\";
-        public string MessageLogsLogPath = Application.StartupPath + "\\message_logs\\log\\";
         private string _swName = "Battery Cooler Diagnostic Tool - COVISART";
         private Timer _tmrReadCanFox;
         private CCanChannel _cCanChannelUsbCh1;
@@ -50,6 +45,7 @@ namespace BatteryCoolerDiagnostic
             if (_deviceList.Count <= 0) return;
 
             _device = _deviceList.get_GetDevice(0);
+            //MessageBox.Show(_device.Name);
         }
 
         private void CONNECT_Click(object sender, EventArgs e)
@@ -66,11 +62,8 @@ namespace BatteryCoolerDiagnostic
                 txtInfo.AppendText(Environment.NewLine);
                 txtInfo.AppendText("Bağlantı kurulmadı");
                 txtInfo.AppendText(Environment.NewLine);
-                connectionStatus.Text = "Disconnected";
-
-                var controlPanel = new ControlPanel(_cCanChannelUsbCh1,_device);
-                controlPanel.ShowDialog();
-
+                connectionStatus.Text = @"Disconnected";
+                
                 if (connectionProgressBar != null) connectionProgressBar.Value = 0;
                 return;
             }
@@ -133,7 +126,23 @@ namespace BatteryCoolerDiagnostic
                 var num2 = (int)_cCanChannelUsbCh1.CanClearBuffer();
 
                 var controlPanel = new ControlPanel(_cCanChannelUsbCh1,_device);
+                notify.Text = @"Connected to Cooler";
+                notify.Icon = Icon.FromHandle(Resources.connect_icon.GetHicon());
+                notify.BalloonTipText =  @"Connected to Battery Cooler";
+                notify.BalloonTipIcon = toolTip1.ToolTipIcon; 
+                notify.ShowBalloonTip(30000);
+                notify.Visible = true;
                 controlPanel.ShowDialog();
+
+                // Determine if the OK button was clicked on the dialog box.
+                if (controlPanel.DialogResult == DialogResult.OK)
+                {
+                    // Display a message box indicating that the OK button was clicked.
+                    MessageBox.Show(@"Control panel closed.");
+                    // Optional: Call the Dispose method when you are finished with the dialog box.
+                    controlPanel.Dispose();
+                }
+
             }
 
         }
@@ -164,16 +173,17 @@ namespace BatteryCoolerDiagnostic
             }
             connectionStatus.Text = "Disconnected";
             connectionProgressBar.Value = 0;
+            notify.Dispose();
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
             _rcvEvent = new AutoResetEvent(false);
-            LoadJson();
         }
         
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
+            
             disconnect_canfox();
 
             /*if (_readThread != null && _readThread.IsAlive) _readThread.Abort();
@@ -187,32 +197,6 @@ namespace BatteryCoolerDiagnostic
                 Console.WriteLine(exception.Message);
                 MessageBox.Show("Ayarlarda hata var, kayit edilmeden kapatilacak.");
             }*/
-        }
-
-        private void LoadJson()
-        {
-            using (var r = new StreamReader(_configPath + "parametr.json"))
-            {
-                var data = r.ReadToEnd();
-                //configDisplay.Text = data;
-                var tempData= new List<CANDATA>();
-                try
-                {
-                    _canDataList = JsonConvert.DeserializeObject<List<CANDATA>>(data);
-                    /*foreach (CANDATA canData in canDataList)
-                    {
-                        var mulGroup = canData.MultiplexingGroup.Split('=');
-                        if(mulGroup.Length>0) canData.MultiplexingGroup = mulGroup[1].Replace(" ","");
-                        tempData.Add(canData);
-                    }
-                    var stringJson = JsonConvert.SerializeObject(tempData, Formatting.Indented);
-                    File.WriteAllText(config_path + "parametr_fixed.json", stringJson);*/
-                }
-                catch (Exception e)
-                {
-                    MessageBox.Show(e.Message);
-                }
-            }
         }
     }
 }

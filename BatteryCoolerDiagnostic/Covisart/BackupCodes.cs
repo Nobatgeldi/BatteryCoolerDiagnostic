@@ -100,5 +100,26 @@ namespace BatteryCoolerDiagnostic.Covisart
         }
 
          */
+        /*if (group == 11 && start == 8)
+        {
+            bits.Set(start,true);
+            var bytes = new byte[8];
+            bits.CopyTo(bytes,0);
+
+            send_can_message_canfox(bytes, true, BatteryCoolerSendId);
+        }*/
+        /*
+        *if (group == 30)
+        {
+            var status = _canMessage.Data[3];
+            Console.WriteLine($"Group {group} - Start {start} value:{status}");
+            _canMessage.Data[3] = 24;
+            send_can_message_canfox(_canMessage.Data, true, BatteryCoolerSendId);
+        }
+         */
+        /*if (group == 11 && start == 16)
+        {
+            Console.WriteLine($"Group {group} value:{value}");
+        }*/
     }
 }

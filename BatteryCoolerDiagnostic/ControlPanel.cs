@@ -2,11 +2,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
-using System.Threading;
 using System.Windows.Forms;
 using System.Windows.Forms.DataVisualization.Charting;
 using BatteryCoolerDiagnostic.Covisart;
+using BatteryCoolerDiagnostic.Properties;
 using Newtonsoft.Json;
 using Peak.Can.Light;
 using SiE.SiEAPI_Interface;
@@ -16,18 +15,16 @@ namespace BatteryCoolerDiagnostic
 {
     public partial class ControlPanel : Form
     {
-        private readonly string _configPath = Application.StartupPath + "\\config\\";
-
         private readonly CCanChannel _cCanChannelUsbCh1;
-        private CDevice _device;
+        private readonly CDevice _device;
         private delegate void ReadDelegateHandler();
-        private readonly ReadDelegateHandler _readDelegate;
+        private ReadDelegateHandler _readDelegate;
         private TCLightMsg _canMessage;
         private readonly BindingList<CANSTATE> _canStateList;
         private List<CANDATA> _canDataList;
 
-        private const uint BatteryCoolerSendId = 1501;
-        private const uint BatteryCoolerReceiveId = 1500;
+        private const int BatteryCoolerSendId = 1501;
+        private const int BatteryCoolerReceiveId = 1500;
 
         private eErrorCodesCanChannel _eRet;
         private uint _uiLen = 1;
@@ -36,12 +33,9 @@ namespace BatteryCoolerDiagnostic
         {
             InitializeComponent();
             LoadJson();
-            _cCanChannelUsbCh1 = canChannelUsbCh1;
-            _device = device;
 
-            _readDelegate = tmrRead_CanFox_Tick;
-            var readThread = new Thread(CanReadThreadFunc);
-            readThread.Start();
+            this._cCanChannelUsbCh1 = canChannelUsbCh1;
+            this._device = device;
 
             // Allow new parts to be added, but not removed once committed.        
             _canStateList = new BindingList<CANSTATE>
@@ -54,7 +48,7 @@ namespace BatteryCoolerDiagnostic
             this.temperatureChart.Titles.Add("Temperature by Time");
             var series = this.temperatureChart.Series.Add("Temperature by Time");
             series.ChartType = SeriesChartType.Spline;
-            series.XValueMember="hi";
+            series.XValueMember="°C";
             series.Points.AddXY("1", 25);
             series.Points.AddXY("2", 30);
             series.Points.AddXY("3", 40);
@@ -65,30 +59,14 @@ namespace BatteryCoolerDiagnostic
         }
         private void OnListChanged(object sender, ListChangedEventArgs e)
         {
-            MessageBox.Show(e.ListChangedType.ToString());
-            //LogBox.Clear();
             foreach (var canState in _canStateList)
             {
-                //LogBox.AppendText(canState.Name + ": " + canState.Message.ToString() + " " + canState.Unit);
+                Console.WriteLine(canState.ToString());
+                //LogBox.AppendText(canState.Name + ": " + canState.Message+ " " + canState.Unit);
+                //LogBox.AppendText(Environment.NewLine);
             }
         }
-        private void CanReadThreadFunc()
-        {
-            var status = new CStatusData();
-            while (_cCanChannelUsbCh1.CanStatus(status) == eErrorCodesCanChannel.CAN_SUCCESS)
-            {
-                try
-                {
-                    Invoke(_readDelegate);
 
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                    break;
-                }
-            }
-        }
         private void tmrRead_CanFox_Tick()
         {
             var counterData = new CCounterData();
@@ -130,7 +108,9 @@ namespace BatteryCoolerDiagnostic
                 _canMessage.Data[6] = ccmsgArray[index].get_Data(6);
                 _canMessage.Data[7] = ccmsgArray[index].get_Data(7);
 
-                if ((int)_canMessage.ID == (int)BatteryCoolerReceiveId)
+                //message_parser_battery_cooler(_canMessage);
+
+                if ((int)_canMessage.ID == BatteryCoolerReceiveId)
                     message_parser_battery_cooler(_canMessage);
                 else
                     MessageBox.Show(@"This device is not battery cooler:" + (int)_canMessage.ID);
@@ -146,52 +126,56 @@ namespace BatteryCoolerDiagnostic
 
             foreach (var canData in _canDataList)
             {
-                var group = int.Parse(canData.MultiplexingGroup, System.Globalization.NumberStyles.HexNumber);
-                var messageId = int.Parse(canData.MessageID, System.Globalization.NumberStyles.HexNumber);
-                var start = int.Parse(canData.Startbit);
-                var length = int.Parse(canData.LengthBit);
-
-                if (canFrame.Data[0] != group) 
-                    if(messageId != BatteryCoolerReceiveId) continue;
-
-                var bits = new BitArray(canFrame.Data);
-                object value;
-                switch (length)
+                try
                 {
-                    case 1:
-                        value = bits.Get(start);
-                        break;
-                    case 8:
+                    var group = Convert.ToInt32(canData.MultiplexingGroup, 16);
+                    var messageId = Convert.ToInt32(canData.MessageID, 16);
+                    var start = int.Parse(canData.Startbit);
+                    var length = int.Parse(canData.LengthBit);
+                    
+                    object value = 0;
+                    if (_canMessage.Data[0] != @group) continue;
+                    switch (length)
                     {
-                        var bytes = new byte[7];
-                        bits.CopyTo(bytes, start);
-                        var status = bytes[0];
-                        value = bytes[0];
-                        break;
+                        case 1:
+                            var bits = new BitArray(canFrame.Data);
+                            value = bits.Get(start);
+                            break;
+                        case 8:
+                            value = _canMessage.Data[StartByte(start)];
+                            break;
+
+                        case 16:
+                            value = BitConverter.ToInt16(_canMessage.Data, StartByte(start));
+                            break;
                     }
-                    default:
+                    var tempCanState = new CANSTATE
                     {
-                        var bytes = new byte[7];
-                        bits.CopyTo(bytes, start);
-                        value = BitConverter.ToInt16(bytes, 0);
-                        break;
-                    }
+                        Name = canData.Name, Message = value, Unit = canData.Unit, Length = length
+                    };
+                    //Console.WriteLine(tempCanState.ToString());
+                    tempCanStateList.Add(tempCanState);
                 }
-
-                var tempCanState = new CANSTATE
+                catch (Exception e)
                 {
-                    Name = canData.Name, Message = value, Unit = canData.Unit, Length = length
-                };
-
-                tempCanStateList.Add(tempCanState);
+                    Console.WriteLine(e.Message);
+                    throw;
+                }
             }
+
+            this.Invoke(new Action(() => this.UpdateUi(tempCanStateList)));
+
+        }
+
+        private void UpdateUi(IEnumerable<CANSTATE> dataList)
+        {
             _canStateList.Clear();
-            //canStateList = tempCanStateList;
-            foreach (var item in tempCanStateList)
+            foreach (var item in dataList)
             {
                 _canStateList.Add(item);
             }
         }
+
         private void send_can_message_canfox(byte[] dataBytes, bool feedback = true, uint sendId = 0)
         {
             var aCMessage = new CCMSG[1] { new CCMSG() };
@@ -210,22 +194,22 @@ namespace BatteryCoolerDiagnostic
             aCMessage[0].set_Data((ushort)5, dataBytes[5]);
             aCMessage[0].set_Data((ushort)6, dataBytes[6]);
             aCMessage[0].set_Data((ushort)7, dataBytes[7]);
-            this._eRet = this._cCanChannelUsbCh1.CanSend(aCMessage, ref this._uiLen);
-            /*if (!feedback)
+            _eRet = this._cCanChannelUsbCh1.CanSend(aCMessage, ref this._uiLen);
+            if (!feedback)
                 return;
-            if (this._eRet != eErrorCodesCanChannel.CAN_SUCCESS)
+            if (_eRet != eErrorCodesCanChannel.CAN_SUCCESS)
             {
-                this.txtInfo.Text = "Error: " + this._eRet.ToString();
+                Console.WriteLine($"STATUS:{_eRet}");
             }
             else
             {
-                if (this._eRet != eErrorCodesCanChannel.CAN_SUCCESS)
-                    return;
-                this.txtInfo.Text = "Basarili.\r\n";
-            }*/
+                Console.WriteLine($"STATUS:{_eRet}");
+            }
         }
         private void ControlPanel_FormClosing(object sender, FormClosingEventArgs e)
         {
+            canbus_thread.CancelAsync();
+            this.DialogResult = DialogResult.OK;
 
         }
 
@@ -235,42 +219,69 @@ namespace BatteryCoolerDiagnostic
              Text = Text + @" - Bağlı Cihaz: " + _device.Name;
             var canData = JsonConvert.SerializeObject(_canDataList, Formatting.Indented);
             configDisplay.AppendText(canData);
+
+            canbus_thread.RunWorkerAsync();
         }
 
         private void LoadJson()
         {
-            using (var r = new StreamReader(_configPath + "parametr.json"))
+            var tempData= new List<CANDATA>();
+            try
+            {
+                _canDataList = JsonConvert.DeserializeObject<List<CANDATA>>(Resources.Parameters);
+                if (_canDataList == null) return;
+                /*foreach (var errorLabel in from canData in _canDataList where canData.Name.Contains("err") select new Label
+                {
+                    AutoSize = true,
+                    Name = canData.Name,
+                    Text = canData.Name,
+                    Margin = new Padding(0,5,0,5)
+                })
+                {
+                    flowLayoutPanelError.Controls.Add(errorLabel);
+                }*/
+                /*foreach (var canData in _canDataList)
+                {
+                    var mulGroup = canData.MultiplexingGroup.Split('=');
+                    if(mulGroup.Length>0) canData.MultiplexingGroup = mulGroup[1].Replace(" ","");
+                    tempData.Add(canData);
+                }
+                var stringJson = JsonConvert.SerializeObject(_canDataList, Formatting.Indented);
+                File.WriteAllText(_configPath + "parametr.json", stringJson);*/
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message);
+            }
+            /*using (var r = new StreamReader(Resources.Parameters))
             {
                 var data = r.ReadToEnd();
                 //configDisplay.Text = data;
-                var tempData= new List<CANDATA>();
+                
+            }*/
+        }
+
+        private static int StartByte(int start)
+        {
+            return start / 8;
+        }
+
+        private void canbus_thread_DoWork(object sender, DoWorkEventArgs e)
+        {
+            var status = new CStatusData();
+            while (_cCanChannelUsbCh1.CanStatus(status) == eErrorCodesCanChannel.CAN_SUCCESS &&
+                   !canbus_thread.CancellationPending)
+            {
                 try
                 {
-                    _canDataList = JsonConvert.DeserializeObject<List<CANDATA>>(data);
-                    /*foreach (CANDATA canData in canDataList)
-                    {
-                        var mulGroup = canData.MultiplexingGroup.Split('=');
-                        if(mulGroup.Length>0) canData.MultiplexingGroup = mulGroup[1].Replace(" ","");
-                        tempData.Add(canData);
-                    }
-                    var stringJson = JsonConvert.SerializeObject(tempData, Formatting.Indented);
-                    File.WriteAllText(config_path + "parametr_fixed.json", stringJson);*/
+                    tmrRead_CanFox_Tick();
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
-                    MessageBox.Show(e.Message);
+                    Console.WriteLine(ex.Message);
+                    break;
                 }
             }
-        }
-
-        private void label17_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void textBox19_TextChanged(object sender, EventArgs e)
-        {
-
         }
     }
 }

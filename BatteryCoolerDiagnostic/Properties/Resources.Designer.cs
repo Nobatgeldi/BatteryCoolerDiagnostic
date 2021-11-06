@@ -69,5 +69,44 @@ namespace BatteryCoolerDiagnostic.Properties {
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to [
+        ///  {
+        ///    &quot;Name&quot;: &quot;J_1_Sys_environment_temp&quot;,
+        ///    &quot;Message&quot;: &quot;BTMS_BxCool_2_circuits&quot;,
+        ///    &quot;Multiplexing/Group&quot;: &quot;0x1&quot;,
+        ///    &quot;Startbit&quot;: &quot;8&quot;,
+        ///    &quot;Length [Bit]&quot;: &quot;16&quot;,
+        ///    &quot;Byte Order&quot;: &quot;Intel&quot;,
+        ///    &quot;Value Type&quot;: &quot;Signed&quot;,
+        ///    &quot;Initial Value&quot;: &quot;0&quot;,
+        ///    &quot;Factor&quot;: &quot;0.1&quot;,
+        ///    &quot;Offset&quot;: &quot;0&quot;,
+        ///    &quot;Minimum&quot;: &quot;0&quot;,
+        ///    &quot;Maximum&quot;: &quot;0&quot;,
+        ///    &quot;Value Table&quot;: &quot;&lt;none&gt;&quot;,
+        ///    &quot;Comment&quot;: &quot;Job 1, System: Environment temperature&quot;,
+        ///    &quot;Message ID&quot;: &quot;0x5DC&quot;,
+        ///    &quot;Unit&quot;: &quot;°C&quot;
+        ///  },
+        ///  {
+        ///    &quot;Name&quot;: &quot;J_11_C1_cool [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string Parameters {
+            get {
+                return ResourceManager.GetString("Parameters", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] parametr {
+            get {
+                object obj = ResourceManager.GetObject("parametr", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
     }
 }

@@ -29,12 +29,15 @@ namespace BatteryCoolerDiagnostic
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.btn_connect = new System.Windows.Forms.Button();
             this.txtInfo = new System.Windows.Forms.TextBox();
             this.statusStrip1 = new System.Windows.Forms.StatusStrip();
             this.connectionProgressBar = new System.Windows.Forms.ToolStripProgressBar();
             this.connectionStatus = new System.Windows.Forms.ToolStripStatusLabel();
+            this.notify = new System.Windows.Forms.NotifyIcon(this.components);
+            this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.statusStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -85,6 +88,16 @@ namespace BatteryCoolerDiagnostic
             this.connectionStatus.Size = new System.Drawing.Size(39, 21);
             this.connectionStatus.Text = "Status";
             // 
+            // notify
+            // 
+            this.notify.Text = "notifyIcon1";
+            this.notify.Visible = true;
+            // 
+            // toolTip1
+            // 
+            this.toolTip1.ToolTipIcon = System.Windows.Forms.ToolTipIcon.Info;
+            this.toolTip1.ToolTipTitle = "Battery Cooler";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -114,6 +127,8 @@ namespace BatteryCoolerDiagnostic
         private System.Windows.Forms.StatusStrip statusStrip1;
         private System.Windows.Forms.ToolStripProgressBar connectionProgressBar;
         private System.Windows.Forms.ToolStripStatusLabel connectionStatus;
+        private System.Windows.Forms.NotifyIcon notify;
+        private System.Windows.Forms.ToolTip toolTip1;
     }
 }
 
